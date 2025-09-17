@@ -12,6 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Support\RawJs;
+
 
 class AmbilBerasResource extends Resource
 {
@@ -33,42 +35,39 @@ class AmbilBerasResource extends Resource
         return $form->schema([
             Forms\Components\TextInput::make('no_kupon')
                 ->label('No Kupon')
+                ->tel()
+                ->extraInputAttributes([
+                    'inputmode' => 'numeric',
+                    'pattern'   => '[0-9]*',
+                ])
                 ->required()
-                ->numeric() // hanya izinkan angka
-                ->inputMode('numeric') // tampilkan keyboard angka di smartphone/tablet
                 ->maxLength(10)
-                ->rule('regex:/^[0-9]+$/') // validasi hanya digit
                 ->rule(function () {
                     return function (string $attribute, $value, Closure $fail) {
-                        $q = AmbilBeras::query()->where('no_kupon', $value);
-                        if ($id = request()->route('record')) {
-                            $q->where('id', '!=', $id);
-                        }
-                        if ($q->exists()) {
-                            $fail('No kupon telah ada.');
-                        }
+                        $q = \App\Models\AmbilBeras::query()->where('no_kupon', $value);
+                        if ($id = request()->route('record')) $q->where('id', '!=', $id);
+                        if ($q->exists()) $fail('No kupon telah ada.');
                     };
                 }),
 
+            // NO KTP — tepat 16 digit, string
             Forms\Components\TextInput::make('no_ktp')
                 ->label('No KTP')
+                ->tel()
+                ->extraInputAttributes([
+                    'inputmode' => 'numeric',
+                    'pattern'   => '[0-9]*',
+                ])
                 ->required()
-                ->numeric()
-                ->rule('regex:/^\d{16}$/')
-                ->inputMode('numeric')
-                ->maxLength(16) // KTP selalu 16 digit
-                ->rule('regex:/^[0-9]{16}$/')
+                ->minLength(16)->maxLength(16)
                 ->rule(function () {
                     return function (string $attribute, $value, Closure $fail) {
-                        $existing = AmbilBeras::query()
+                        $existing = \App\Models\AmbilBeras::query()
                             ->select(['id', 'no_kupon'])
                             ->where('no_ktp', $value)
                             ->when($id = request()->route('record'), fn($q) => $q->where('id', '!=', $id))
                             ->first();
-
-                        if ($existing) {
-                            $fail('Data No KTP telah ada tersimpan / terinput pada nomor kupon ' . ($existing->no_kupon ?? '-'));
-                        }
+                        if ($existing) $fail('Data No KTP telah ada tersimpan / terinput pada nomor kupon ' . ($existing->no_kupon ?? '-'));
                     };
                 })
                 ->helperText('Harus 16 digit angka.'),
