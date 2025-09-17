@@ -11,6 +11,7 @@ use Filament\Schemas\Schema; // v4
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 
 class AmbilBerasResource extends Resource
 {
@@ -33,7 +34,10 @@ class AmbilBerasResource extends Resource
             Forms\Components\TextInput::make('no_kupon')
                 ->label('No Kupon')
                 ->required()
-                ->maxLength(255)
+                ->numeric() // hanya izinkan angka
+                ->inputMode('numeric') // tampilkan keyboard angka di smartphone/tablet
+                ->maxLength(10)
+                ->rule('regex:/^[0-9]+$/') // validasi hanya digit
                 ->rule(function () {
                     return function (string $attribute, $value, Closure $fail) {
                         $q = AmbilBeras::query()->where('no_kupon', $value);
@@ -49,8 +53,11 @@ class AmbilBerasResource extends Resource
             Forms\Components\TextInput::make('no_ktp')
                 ->label('No KTP')
                 ->required()
+                ->numeric()
                 ->rule('regex:/^\d{16}$/')
-                ->maxLength(255)
+                ->inputMode('numeric')
+                ->maxLength(16) // KTP selalu 16 digit
+                ->rule('regex:/^[0-9]{16}$/')
                 ->rule(function () {
                     return function (string $attribute, $value, Closure $fail) {
                         $existing = AmbilBeras::query()
@@ -93,28 +100,30 @@ class AmbilBerasResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->paginated(false)
+            ->paginationPageOptions([25, 50, 100, 200])
+            ->defaultPaginationPageOption(50) // default 50/baris
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
                 Tables\Columns\TextColumn::make('no_kupon')->label('No Kupon')->searchable(),
                 Tables\Columns\TextColumn::make('no_ktp')->label('No KTP')->searchable(),
                 Tables\Columns\TextColumn::make('nama')->label('Nama')->searchable(),
-                Tables\Columns\TextColumn::make('alamat')->label('Alamat')->wrap(),
-                Tables\Columns\TextColumn::make('tgl_pengambil')->label('Tgl Pengambil')->dateTime('Y-m-d H:i'),
-                Tables\Columns\IconColumn::make('status_ambil')->boolean()->label('Status Ambil'),
-                Tables\Columns\TextColumn::make('create_by')->label('Create By'),
-                Tables\Columns\TextColumn::make('create_date')->label('Create Date')->dateTime('Y-m-d H:i'),
-                Tables\Columns\TextColumn::make('update_by')->label('Update By'),
-                Tables\Columns\TextColumn::make('update_date')->label('Update Date')->dateTime('Y-m-d H:i'),
+                Tables\Columns\TextColumn::make('alamat')->label('Alamat')->wrap()->searchable(),
             ])
             // klik baris langsung ke halaman edit
             ->recordUrl(fn($record) => static::getUrl('edit', ['record' => $record]))
             ->actions([])        // tidak perlu row action
+            ->defaultSort('no_kupon', 'asc')
             ->bulkActions([]);   // tidak ada bulk action
     }
     public static function getRelations(): array
     {
         return [];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        // Mulai dari query bawaan resource
+        return parent::getEloquentQuery()
+            ->select(['id', 'no_kupon', 'no_ktp', 'nama', 'alamat']); // kolom yang dipakai tabel
     }
 
     public static function getPages(): array
